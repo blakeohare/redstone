@@ -65,4 +65,31 @@
 		
 		return $output;
 	}
+	
+	$t = 'abcdefghijklmnopqrstuvwxyz';
+	$t .= strtoupper($t);
+	$t .= '0123456789_';
+	$_VALID_IDENTIFIER_CHARS = array();
+	for ($i = 0; $i < strlen($t); ++$i) {
+		$_VALID_IDENTIFIER_CHARS[$t[$i]] = true;
+	}
+	
+	function is_valid_identifier($string) {
+		global $_VALID_IDENTIFIER_CHARS;
+		
+		if (strlen($string) == 0) return false;
+		
+		for ($i = 0; $i < strlen($string); ++$i) {
+			if (!$_VALID_IDENTIFIER_CHARS[$string[$i]]) {
+				return false;
+			}
+		}
+		
+		$first = ord($string[0]);
+		
+		if ($first >= ord('0') && $first <= ord('9')) return false;
+		
+		return true;
+	}
+	
 ?>

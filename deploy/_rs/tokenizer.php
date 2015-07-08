@@ -178,5 +178,65 @@
 		private function add_token($value, $token_start_index) {
 			array_push($this->tokens, new Token($value, $this->cols[$token_start_index], $this->lines[$token_start_index], $this->file, $this->contents));
 		}
+		
+		public function has_more() {
+			return $this->index < $this->length;
+		}
+		
+		public function peek_value() {
+			if ($this->index < $this->length) {
+				return $this->tokens[$this->index]->value;
+			}
+			return null;
+		}
+		
+		public function pop() {
+			if ($this->index < $this->length) {
+				return $this->tokens[$this->index++];
+			}
+			throw new RedstoneCompileException(null, "Unexpected EOF.");
+		}
+		
+		public function pop_expected($expected_value) {
+			if ($this->index < $this->length) {
+				$token = $this->tokens[$this->index++];
+				if ($token->value == $expected_value) {
+					return $token;
+				}
+				throw new RedstoneCompileException($token, "Expected '" . $value ."', found '" . $token->value . "' instead.");
+			}
+			throw new RedstoneCompileException(null, "Expected '" . $value . "', found EOF.");
+		}
+		
+		public function pop_if_present($value) {
+			if ($this->index < $this->length) {
+				$token = $this->tokens[$this->index];
+				if ($token->value == $value) {
+					$this->index++;
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		public function pop_identifier() {
+			if ($this->index < $this->length) {
+				$token = $this->tokens[$this->index++];
+				if (is_valid_identifier($token->value)) {
+					return $token;
+				}
+				throw new RedstoneCompileException($token, "Expected identifier. Found '" . $token->value ."'");
+			}
+			throw new RedstoneCompileException($token, "Expected identifier. Found EOF.");
+		}
+		
+		public function is_next($value) {
+			if ($this->index < $this->length) {
+				if ($this->tokens[$this->index]->value == $value) {
+					return true;
+				}
+			}
+			return false;
+		}
 	}
 ?>

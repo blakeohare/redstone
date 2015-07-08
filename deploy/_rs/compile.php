@@ -2,6 +2,9 @@
 	require 'exceptions.php';
 	require 'util.php';
 	require 'tokenizer.php';
+	require 'parse_tree_nodes.php';
+	require 'parser.php';
+	
 	
 	function compile($rs_url) {
 		try {
@@ -9,6 +12,8 @@
 			if (file_exists('..'.$path)) {
 				$code = file_get_contents('..'.$path);
 				$tokens = new TokenStream($rs_url, $code);
+				$parser = new Parser();
+				$parse_tree = $parser->parse($tokens);
 				return null;
 			} else {
 				throw new RedstoneCompilerException(null, 'Source file does not exist: ' . $path);
