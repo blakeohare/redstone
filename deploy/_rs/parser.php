@@ -108,7 +108,7 @@
 			$tokens->pop_expected('(');
 			$arg_names = array();
 			$arg_values = array();
-			while ($tokens->pop_if_present(')')) {
+			while (!$tokens->pop_if_present(')')) {
 				if (count($arg_names) > 0) {
 					$tokens->pop_expected(',');
 				}
@@ -371,7 +371,7 @@
 								$arg_value = $this->parse_expression($tokens);
 							}
 						}
-						$expression = new FunctionInvocation($expression, $arg_names, $arg_values);
+						$expression = new FunctionInvocation($expression, $paren, $arg_names, $arg_values);
 						break;
 						
 					default:

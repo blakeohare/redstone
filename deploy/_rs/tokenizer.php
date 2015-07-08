@@ -33,7 +33,7 @@
 			$file_contents = str_replace("\r\n", "\n", $file_contents);
 			$file_contents = str_replace("\r", "\n", $file_contents);
 			$this->file = $file;
-			$this->contents = $file_contents;
+			$this->file_contents = $file_contents;
 			$file_contents .= "\0";
 			$length = strlen($file_contents);
 			
@@ -58,6 +58,9 @@
 					$col++;
 				}
 			}
+			
+			$this->lines = $lines;
+			$this->cols = $cols;
 			
 			$token_start = null;
 			$mode = 'none';
@@ -176,11 +179,18 @@
 		}
 		
 		private function add_token($value, $token_start_index) {
-			array_push($this->tokens, new Token($value, $this->cols[$token_start_index], $this->lines[$token_start_index], $this->file, $this->contents));
+			array_push($this->tokens, new Token($value, $this->cols[$token_start_index], $this->lines[$token_start_index], $this->file, $this->file_contents));
 		}
 		
 		public function has_more() {
 			return $this->index < $this->length;
+		}
+		
+		public function peek() {
+			if ($this->index < $this->length) {
+				return $this->tokens[$this->index];
+			}
+			return null;
 		}
 		
 		public function peek_value() {
