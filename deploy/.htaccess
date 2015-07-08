@@ -1,0 +1,4 @@
+RewriteEngine on
+RewriteRule ^(.+)\.rsx _rs/compile.php?rs_url=$1.rs [QSA,L]
+RewriteRule ^(.+)\.rs _rs/run.php?rs_url=$1.rs [QSA,L]
+RewriteRule ^(.+)/$ _rs/run.php?rs_url=$1/index.rs [QSA,L]
