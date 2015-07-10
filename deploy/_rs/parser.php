@@ -31,50 +31,79 @@
 			
 			if ($tokens->pop_if_present('(')) {
 				while (!$tokens->pop_if_present(')')) {
-					if (count($args) > 0) $tokens->pop_expected(',');
+					if (count($args) > 0) {
+						$tokens->pop_expected(',');
+					}
 					
 					array_push($args, $this->parse_expression($tokens));
 				}
 			}
 			
+			
+			
 			return new Annotation($annotation, $args);
 		}
 		
-		
-		function parse_executable($tokens, $semicolon_expected = true) {
-			$next = $tokens->peek_value();
-			$annotations = array();
-			while ($next[0] == '@') {
-				$annotation = $this->parse_annotation($tokens);
-				$next = $tokens->peek_value();
-				if ($next[0] == '@') {
-					// annotations can be chained. Keep going.
-				} else if ($next != 'function' && $next != 'class') {
-					throw new RedstoneCompileException($tokens->peek(), "Annotations can only be applied to functions and classes.");
-				}
-				
-				array_push($annotations, $annotation);
+		function parse_block($tokens, $braces_required = false) {
+			
+			if ($braces_required) {
+				$tokens->pop_expected('{');
+				$braces_present = true;
+			} else {
+				$braces_present = $tokens->pop_if_present('{');
 			}
 			
-			switch ($next) {
-				case 'break': return $this->parse_break($tokens);
-				case 'class': return $this->parse_class($tokens, $annotations);
-				case 'continue': return $this->parse_continue($tokens);
-				case 'do': return $this->parse_do_while($tokens);
-				case 'for': return $this->parse_for($tokens);
-				case 'function': return $this->parse_function($tokens, $annotations);
-				case 'if': return $this->parse_if($tokens);
-				case 'import': return $this->parse_import($tokens);
-				case 'return': return $this->parse_return($tokens);
-				case 'switch': return $this->parse_switch($tokens);
-				case 'throw': return $this->parse_throw($tokens);
-				case 'try': return $this->parse_try($tokens);
-				case 'while': return $this->parse_while($tokens);
-				default: break;
+			$output = array();
+			if ($braces_present) {
+				while (!$tokens->pop_if_present('}')) {
+					array_push($output, $this->parse_executable($tokens));
+				}
+			} else {
+				array_push($output, $this->parse_executable($tokens));
+			}
+			
+			return $output;
+		}
+		
+		function parse_executable($tokens, $semicolon_expected = true, $allow_complex = true) {
+			$next = $tokens->peek_value();
+			
+			$token = $tokens->peek();
+			
+			if ($allow_complex) {
+				$annotations = array();
+				while ($next[0] == '@') {
+					$annotation = $this->parse_annotation($tokens);
+					$next = $tokens->peek_value();
+					if ($next[0] == '@') {
+						// annotations can be chained. Keep going.
+					} else if ($next != 'function' && $next != 'class') {
+						throw new RedstoneCompileException($tokens->peek(), "Annotations can only be applied to functions and classes.");
+					}
+					
+					array_push($annotations, $annotation);
+				}
+				
+				switch ($next) {
+					case 'break': return $this->parse_break($tokens);
+					case 'class': return $this->parse_class($tokens, $annotations);
+					case 'continue': return $this->parse_continue($tokens);
+					case 'do': return $this->parse_do_while($tokens);
+					case 'for': return $this->parse_for($tokens);
+					case 'function': return $this->parse_function($tokens, $annotations);
+					case 'if': return $this->parse_if($tokens);
+					case 'import': return $this->parse_import($tokens);
+					case 'return': return $this->parse_return($tokens);
+					case 'switch': return $this->parse_switch($tokens);
+					case 'throw': return $this->parse_throw($tokens);
+					case 'try': return $this->parse_try($tokens);
+					case 'while': return $this->parse_while($tokens);
+					default: break;
+				}
 			}
 			
 			$expression = $this->parse_expression($tokens);
-			switch ($this->peek_value()) {
+			switch ($tokens->peek_value()) {
 				case '=':
 				case '+=':
 				case '-=':
@@ -89,17 +118,58 @@
 				case '>>=':
 					$op = $tokens->pop();
 					$value = $this->parse_expression($tokens);
-					if ($semicolon_expected) {
-						$tokens->pop_expected(';');
-					}
-					return new Assignment($expression, $op, $value);
+					$executable = new Assignment($expression, $op, $value);
+					break;
 				default:
-					return new ExpressionAsExecutable($expression);
+					$executable = new ExpressionAsExecutable($expression);
+					break;
 			}
+			
+			if ($semicolon_expected) {
+				$tokens->pop_expected(';');
+			}
+			
+			return $executable;
 		}
 		
 		function parse_expression($tokens) {
 			return $this->parse_ternary($tokens);
+		}
+		
+		function parse_for($tokens) {
+			$for_token = $tokens->pop_expected('for');
+			$tokens->pop_expected('(');
+			$init = array();
+			$condition = null;
+			$step = array();
+			
+			// TODO: check if the next token is an identifier and the one after is a colon,
+			// in which case, call $this->parse_foreach($tokens).
+			
+			$next_allowed = true;
+			while (!$tokens->pop_if_present(';')) {
+				if (!$next_allowed) $tokens->pop_expected(';'); // throws exception
+				$executable = $this->parse_executable($tokens, false, false);
+				array_push($init, $executable);
+				$next_allowed = $tokens->pop_if_present(',');
+			}
+			
+			if (!$tokens->pop_if_present(';')) {
+				$condition = $this->parse_expression($tokens);
+				$tokens->pop_expected(';');
+			}
+			
+			$next_allowed = true;
+			while (!$tokens->pop_if_present(')')) {
+				if (!$next_allowed) $tokens->pop_expected(')'); // throws exception
+				$executable = $this->parse_executable($tokens, false, false);
+				array_push($step, $executable);
+				$next_allowed = $tokens->pop_if_present(',');
+			}
+			
+			$block = $this->parse_block($tokens);
+			
+			return new ForStatement($for_token, $init, $condition, $step, $block);
 		}
 		
 		function parse_function($tokens, $annotations) {
@@ -186,7 +256,7 @@
 					array_push($expressions, $this->parse_equality_comparison($tokens));
 					$next = $this->peek_value();
 				}
-				return BinaryOperations($expressions, $ops);
+				return new BinaryOperations($expressions, $ops);
 			}
 			return $expression;
 		}
@@ -197,7 +267,7 @@
 			if ($next == '==' || $next == '!=') {
 				$op = $tokens->pop();
 				$right_expression = $this->parse_inequality_comparison($tokens);
-				return BinaryOperation($expression, $op, $left_expression);
+				return BinaryOperations(array($expression, $left_expression), array($op));
 			}
 			return $expression;
 		}
@@ -208,7 +278,7 @@
 			if ($next == '<' || $next == '>' || $next == '<=' || $next == '>=') {
 				$op = $tokens->pop();
 				$right_expression = $this->parse_bitshift($tokens);
-				return BinaryOperations(array($expression, $right_expression), array($op));
+				return new BinaryOperations(array($expression, $right_expression), array($op));
 			}
 			return $expression;
 		}
@@ -224,7 +294,7 @@
 					array_push($expressions, $this->parse_addition($tokens));
 					$next = $this->peek_value();
 				}
-				return BinaryOperations($expressions, $ops);
+				return new BinaryOperations($expressions, $ops);
 			}
 			return $expression;
 		}
@@ -240,7 +310,7 @@
 					array_push($expressions, $this->parse_multiplication($tokens));
 					$next = $this->peek_value();
 				}
-				return BinaryOperations($expressions, $ops);
+				return new BinaryOperations($expressions, $ops);
 			}
 			return $expression;
 		}
@@ -256,7 +326,7 @@
 					array_push($expressions, $this->parse_negation($tokens));
 					$next = $tokens->peek_value();
 				}
-				return BinaryOperations($expressions, $ops);
+				return new BinaryOperations($expressions, $ops);
 			}
 			return $expression;
 		}
@@ -280,7 +350,7 @@
 					array_push($expressions, $this->parse_increment($tokens));
 					$next = $tokens->peek_value();
 				}
-				return BinaryOperations($expressions, $ops);
+				return new BinaryOperations($expressions, $ops);
 			}
 			return $expression;
 		}
@@ -310,7 +380,7 @@
 			if ($next == '(') $expression = $this->parse_parenthesis($tokens);
 			else if ($next == '[') $expression = $this->parse_list($tokens);
 			else if ($next == '{') $expression = $this->parse_dictionary($tokens);
-			else if ($c == '"' || $c == "'") $expression = new StringLiteral($tokens->pop());
+			else if ($c == '"' || $c == "'")  $expression = new StringLiteral($tokens->pop());
 			else if ($c == '0' && substr($next, 0, 2) == '0x') $expression = new IntegerLiteral($tokens->pop());
 			else if ($next == 'true' || $next == 'false') $expression = new BooleanLiteral($tokens->pop());
 			else if ($next == 'null') $expression = new NullLiteral($tokens->pop());
@@ -378,6 +448,7 @@
 						$anything_interesting = false;
 						break;
 				}
+				$next = $tokens->peek_value();
 			}
 			return $expression;
 		}

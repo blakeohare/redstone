@@ -24,7 +24,7 @@
 	
 	class TokenStream {
 		private $tokens;
-		private $index;
+		public $index;
 		private $length;
 		
 		public function __construct($file, $file_contents) {
@@ -175,7 +175,7 @@
 			}
 			
 			$this->length = count($this->tokens);
-			$this->index = 0;
+			$this->index = 0;			
 		}
 		
 		private function add_token($value, $token_start_index) {
