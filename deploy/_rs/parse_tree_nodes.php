@@ -70,7 +70,7 @@
 		public function __construct($target, $op_token, $value) {
 			parent::__construct($target->first_token);
 			$this->target = $target;
-			$this->value = $vaule;
+			$this->value = $value;
 			$this->op_token = $op_token;
 			$this->op = $op_token->value;
 		}
@@ -97,6 +97,26 @@
 		public function resolve() {
 			$this->expressions = $this->resolve_expressions($this->expressions);
 			// TODO: run this through the op interpreter if literals
+			return $this;
+		}
+	}
+	
+	class DotField extends Expression {
+		public $root;
+		public $dot_token;
+		public $field_token;
+		public $field_name;
+		
+		public function __construct($root, $dot_token, $field_token) {
+			parent::__construct($root->first_token);
+			$this->root = $root;
+			$this->dot_token = $dot_token;
+			$this->field_token = $field_token;
+			$this->field_name = $field_token->value;
+		}
+		
+		public function resolve() {
+			$root = $this->root->resolve();
 			return $this;
 		}
 	}

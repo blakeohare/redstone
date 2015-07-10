@@ -1,15 +1,17 @@
 
+x = 42;
+
 @Handle(GET, POST)
 function handle() {
-	println('<html><body>');
+	IO.println('<html><body>');
 	
-	println("<p>Hello, World!</p>");
-	println('<ul>');
+	IO.println("<p>Hello, World!</p>");
+	IO.println('<ul>');
 	for (i = 0; i < 10; ++i) {
-		print('<li>');
-		print(i);
-		println('</li>');
+		IO.print('<li>');
+		IO.print(i);
+		IO.println('</li>');
 	}
-	println('</ul>');
-	println('</body></html>');
+	IO.println('</ul>');
+	IO.println('</body></html>');
 }

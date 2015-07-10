@@ -92,4 +92,9 @@
 		return true;
 	}
 	
+	function convert_int_to_2_digit_hex($num) {
+		$hex = '0123456789ABCDEF';
+		return $hex[($num >> 4) & 15] . $hex[$num & 15];
+	}
+	
 ?>
